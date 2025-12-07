@@ -6,6 +6,7 @@ defmodule LlmAsyncWeb.Index do
       assign(socket, text: "実行ボタンを押してください")
       |> assign(input_text: "Elixirについて教えてください")
       |> assign(btn: true)
+      |> assign(sentences: [])
 
     {:ok, socket}
   end
@@ -28,7 +29,19 @@ defmodule LlmAsyncWeb.Index do
 
   def handle_info(%{"done" => false, "response" => response}, socket) do
     text = socket.assigns.text <> response
-    {:noreply, assign(socket, text: text)}
+    sentences = String.split(text, ["。", "、"])
+
+    if Enum.count(sentences) == 2 do
+      sentences
+      |> hd()
+      |> IO.inspect()
+    end
+
+    socket =
+      assign(socket, sentences: sentences)
+      |> assign(text: text)
+
+    {:noreply, socket}
   end
 
   def handle_info(%{"done" => true}, socket) do
@@ -63,7 +76,9 @@ defmodule LlmAsyncWeb.Index do
           <textarea id="text_input" name="text" phx-change="update_text" class="input w-[400px]">{@input_text}</textarea>
         </form>
         <button disabled={!@btn} class="btn" phx-click="start">実行</button>
-        <p class="m-2">{@text}</p>
+        <div :for={sentence <- @sentences}>
+          {sentence}
+        </div>
       </div>
     </Layouts.app>
     """
