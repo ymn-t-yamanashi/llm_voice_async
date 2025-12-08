@@ -6,6 +6,8 @@ defmodule LlmAsyncWeb.Index do
       assign(socket, text: "実行ボタンを押してください")
       |> assign(input_text: "Elixirについて教えてください")
       |> assign(btn: true)
+      |> assign(talking: false)
+      |> assign(old_count: 1)
       |> assign(sentences: [])
 
     {:ok, socket}
@@ -28,17 +30,22 @@ defmodule LlmAsyncWeb.Index do
   end
 
   def handle_info(%{"done" => false, "response" => response}, socket) do
+    talking = socket.assigns.talking
+    old_count = socket.assigns.old_count
     text = socket.assigns.text <> response
     sentences = String.split(text, ["。", "、"])
 
-    if Enum.count(sentences) == 2 do
-      sentences
-      |> hd()
+    new_count = Enum.count(sentences)
+
+    if old_count != new_count do
+      Enum.at(sentences, old_count - 1)
       |> IO.inspect()
     end
 
     socket =
       assign(socket, sentences: sentences)
+      |> assign(talking: talking)
+      |> assign(old_count: new_count)
       |> assign(text: text)
 
     {:noreply, socket}
