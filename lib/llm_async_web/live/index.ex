@@ -37,10 +37,19 @@ defmodule LlmAsyncWeb.Index do
 
     new_count = Enum.count(sentences)
 
-    if old_count != new_count do
-      Enum.at(sentences, old_count - 1)
-      |> IO.inspect()
-    end
+    socket =
+      if old_count != new_count do
+        text =
+          Enum.at(sentences, old_count - 1)
+          |> IO.inspect()
+
+        push_event(socket, "synthesize_and_play", %{
+          "text" => text,
+          "speaker_id" => String.to_integer("1")
+        })
+      else
+        socket
+      end
 
     socket =
       assign(socket, sentences: sentences)
@@ -78,7 +87,7 @@ defmodule LlmAsyncWeb.Index do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <div class="p-5">
+      <div id="voicex" class="p-5" phx-hook="Voicex">
         <form>
           <textarea id="text_input" name="text" phx-change="update_text" class="input w-[400px]">{@input_text}</textarea>
         </form>
