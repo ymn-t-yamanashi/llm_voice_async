@@ -97,6 +97,7 @@ Voicex = {
             // 5. 再生終了後のクリーンアップ
             audioPlayer.onended = () => {
                 URL.revokeObjectURL(audioUrl);
+                this.pushEvent("voice_playback_finished", { status: "ok" });
             };
             audioPlayer.onerror = () => {
                  URL.revokeObjectURL(audioUrl);
