@@ -65,6 +65,8 @@ Voicex = {
 
         // 1. クエリ取得 (Hook内部関数を呼び出し)
         const audioQuery = await this.fetchAudioQuery(trimmedText, speakerId);
+
+        audioQuery.speedScale = 1.5;
         
         // 2. 音声合成 (Hook内部関数を呼び出し)
         const wavBlob = await this.fetchSynthesis(audioQuery, speakerId);
