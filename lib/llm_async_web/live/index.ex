@@ -6,7 +6,7 @@ defmodule LlmAsyncWeb.Index do
       assign(socket, text: "実行ボタンを押してください")
       |> assign(input_text: "Elixirについて一言で教えてください")
       |> assign(btn: true)
-      |> assign(old_count: 1)
+      |> assign(old_sentence_count: 1)
       |> assign(sentences: [])
       |> assign(talking_no: 0)
 
@@ -36,36 +36,21 @@ defmodule LlmAsyncWeb.Index do
     # 最後は"\n"であるため -1
     max_talking_no = Enum.count(sentences) - 1
 
-    socket =
-      if talking_no < max_talking_no do
-        synthesize_and_play(text, socket)
-        |> assign(talking_no: talking_no)
-      else
-        assign(socket, talking_no: 0)
-      end
-
+    socket = speak_next(socket, talking_no, max_talking_no, text)
     {:noreply, socket}
   end
 
   def handle_info(%{"done" => false, "response" => response}, %{assigns: assigns} = socket) do
-    old_count = assigns.old_count
+    old_sentence_count = assigns.old_sentence_count
     text = assigns.text <> response
     sentences = String.split(text, ["。", "、"])
-
-    new_count = Enum.count(sentences)
-
-    socket =
-      if old_count == 1 && new_count == 2 do
-        Enum.at(sentences, old_count - 1)
-        |> synthesize_and_play(socket)
-      else
-        socket
-      end
+    new_sentence_count = Enum.count(sentences)
 
     socket =
       assign(socket, sentences: sentences)
-      |> assign(old_count: new_count)
+      |> assign(old_sentence_count: new_sentence_count)
       |> assign(text: text)
+      |> speak_first(old_sentence_count, new_sentence_count, sentences)
 
     {:noreply, socket}
   end
@@ -82,6 +67,23 @@ defmodule LlmAsyncWeb.Index do
       "text" => text,
       "speaker_id" => "1"
     })
+  end
+
+  defp speak_first(socket, _old_sentence_count = 1, _new_sentence_count = 2, sentences) do
+    sentences
+    |> hd()
+    |> synthesize_and_play(socket)
+  end
+
+  defp speak_first(socket, _, _, _sentences), do: socket
+
+  defp speak_next(socket, talking_no, max_talking_no, text) when talking_no < max_talking_no do
+    synthesize_and_play(text, socket)
+    |> assign(talking_no: talking_no)
+  end
+
+  defp speak_next(socket, _talking_no, _max_talking_no, _text) do
+    assign(socket, talking_no: 0)
   end
 
   defp run(pid, text) do
