@@ -56,9 +56,6 @@ defmodule LlmAsyncWeb.Index do
   end
 
   def handle_info(%{"done" => true}, socket) do
-    socket =
-      assign(socket, btn: true)
-
     {:noreply, socket}
   end
 
@@ -84,6 +81,7 @@ defmodule LlmAsyncWeb.Index do
 
   defp speak_next(socket, _talking_no, _max_talking_no, _text) do
     assign(socket, talking_no: 0)
+    |> assign(btn: true)
   end
 
   defp run(pid, text) do
