@@ -6,7 +6,6 @@ defmodule LlmAsyncWeb.Index do
       assign(socket, text: "実行ボタンを押してください")
       |> assign(input_text: "Elixirについて一言で教えてください")
       |> assign(btn: true)
-      |> assign(talking: false)
       |> assign(old_count: 1)
       |> assign(sentences: [])
       |> assign(talking_no: 0)
@@ -30,20 +29,16 @@ defmodule LlmAsyncWeb.Index do
     {:noreply, assign(socket, input_text: new_text)}
   end
 
-  def handle_event("voice_playback_finished", _, socket) do
-    talking_no = socket.assigns.talking_no + 1
-    sentences = socket.assigns.sentences
+  def handle_event("voice_playback_finished", _, %{assigns: assigns} = socket) do
+    talking_no = assigns.talking_no + 1
+    sentences = assigns.sentences
     text = Enum.at(sentences, talking_no)
+    # 最後は"\n"であるため -1
     max_talking_no = Enum.count(sentences) - 1
 
     socket =
       if talking_no < max_talking_no do
-        IO.puts("#{talking_no} #{max_talking_no} : #{text}")
-
-        push_event(socket, "synthesize_and_play", %{
-          "text" => text,
-          "speaker_id" => String.to_integer("1")
-        })
+        synthesize_and_play(text, socket)
         |> assign(talking_no: talking_no)
       else
         assign(socket, talking_no: 0)
@@ -52,32 +47,23 @@ defmodule LlmAsyncWeb.Index do
     {:noreply, socket}
   end
 
-  def handle_info(%{"done" => false, "response" => response}, socket) do
-    talking = socket.assigns.talking
-    old_count = socket.assigns.old_count
-    text = socket.assigns.text <> response
+  def handle_info(%{"done" => false, "response" => response}, %{assigns: assigns} = socket) do
+    old_count = assigns.old_count
+    text = assigns.text <> response
     sentences = String.split(text, ["。", "、"])
 
     new_count = Enum.count(sentences)
 
     socket =
       if old_count == 1 && new_count == 2 do
-        text =
-          Enum.at(sentences, old_count - 1)
-
-        IO.puts(text)
-
-        push_event(socket, "synthesize_and_play", %{
-          "text" => text,
-          "speaker_id" => String.to_integer("1")
-        })
+        Enum.at(sentences, old_count - 1)
+        |> synthesize_and_play(socket)
       else
         socket
       end
 
     socket =
       assign(socket, sentences: sentences)
-      |> assign(talking: talking)
       |> assign(old_count: new_count)
       |> assign(text: text)
 
@@ -91,7 +77,14 @@ defmodule LlmAsyncWeb.Index do
     {:noreply, socket}
   end
 
-  def run(pid, text) do
+  defp synthesize_and_play(text, socket) do
+    push_event(socket, "synthesize_and_play", %{
+      "text" => text,
+      "speaker_id" => "1"
+    })
+  end
+
+  defp run(pid, text) do
     client = Ollama.init()
 
     {:ok, stream} =
