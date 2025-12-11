@@ -74,7 +74,7 @@ defmodule LlmAsyncWeb.Index do
 
   defp speak_first(socket, _, _, _sentences), do: socket
 
-  defp speak_next(socket, talking_no, max_talking_no, text) when talking_no < max_talking_no do
+  defp speak_next(socket, talking_no, max_talking_no, text) when talking_no <= max_talking_no do
     synthesize_and_play(text, socket)
     |> assign(talking_no: talking_no)
   end
